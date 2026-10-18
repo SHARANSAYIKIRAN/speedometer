@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RallyDash — Live Laptop Preview & Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --card-bg: #111827;
+            --accent-cyan: #00e5ff;
+            --accent-blue: #0055d4;
+            --accent-green: #00e676;
+            --accent-red: #ff2233;
+            --accent-gold: #ffc107;
+            --pcb-red: #9e1b1b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            font-family: 'Montserrat', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #00e5ff, #0070f3, #00e676);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        header p {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        /* Physical Display Frame (Red PCB like in reference) */
+        .hardware-container {
+            position: relative;
+            background: linear-gradient(135deg, #a81c1c, #7d1212);
+            padding: 26px 42px;
+            border-radius: 8px;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.15);
+            border: 2px solid #5a0c0c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        /* Silkscreen text on PCB */
+        .pcb-silkscreen {
+            position: absolute;
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.45);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .pcb-silkscreen.top-right {
+            top: 8px;
+            right: 14px;
+        }
+
+        .pcb-silkscreen.bottom-left {
+            bottom: 8px;
+            left: 14px;
+        }
+
+        /* PCB Mounting Holes */
+        .pcb-hole {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1a1a1a 40%, #c49a45 42%, #e5c158 55%, #7d1212 60%);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .pcb-hole.tl { top: 10px; left: 10px; }
+        .pcb-hole.tr { top: 10px; right: 10px; }
+        .pcb-hole.bl { bottom: 10px; left: 10px; }
+        .pcb-hole.br { bottom: 10px; right: 10px; }
+
+        /* Pin Headers on PCB edges */
+        .pin-header-left {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .pin-header-right {
+            position: absolute;
+            right: 12px;
+            top: 35%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .pin-pad {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #d4af37;
+            border: 1px solid #1a1a1a;
+        }
+
+        /* TFT Display Bezel */
+        .display-bezel {
+            background: #080808;
+            padding: 8px;
+            border-radius: 4px;
+            border: 2px solid #222;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
+        }
+
+        /* TFT Active LCD Screen */
+        #dashCanvas {
+            display: block;
+            width: 640px;
+            height: 480px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(0, 85, 212, 0.4);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            width: 100%;
+            max-width: 740px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid #1f293d;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f293d;
+            padding-bottom: 12px;
+        }
+
+        .control-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .toggle-btn {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-cyan);
+            color: #061124;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .control-label span:last-child {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #1e293b;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+        }
+
+        .gear-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .gear-btn {
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .gear-btn.active {
+            background: var(--accent-cyan);
+            color: #051329;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        .warning-toggles {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .warn-btn {
+            background: #1e293b;
+            color: #64748b;
+            border: 1px solid #334155;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .warn-btn.active {
+            background: var(--accent-red);
+            color: #fff;
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(255, 34, 51, 0.5);
+        }
+
+        .quick-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid #1f293d;
+        }
+
+        .action-btn {
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-cyan);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>RallyDash 320x240 Instrument Cluster</h1>
+        <p>Real-Time Telemetry Simulation & Pixel-Perfect ESP32 / LVGL 8.4 Preview</p>
+    </header>
+
+    <!-- Physical Hardware Frame (Red SPI TFT Module) -->
+    <div class="hardware-container">
+        <div class="pcb-hole tl"></div>
+        <div class="pcb-hole tr"></div>
+        <div class="pcb-hole bl"></div>
+        <div class="pcb-hole br"></div>
+
+        <div class="pcb-silkscreen top-right">HS0028209 G2</div>
+        <div class="pcb-silkscreen bottom-left">2.8" SPI TFT ILI9341</div>
+
+        <div class="pin-header-left">
+            <div class="pin-pad"></div>
+            <div class="pin-pad"></div>
+            <div class="pin-pad"></div>
+            <div class="pin-pad"></div>
+        </div>
+
+        <div class="pin-header-right">
+            <div class="pin-pad"></div><div class="pin-pad"></div><div class="pin-pad"></div>
+            <div class="pin-pad"></div><div class="pin-pad"></div><div class="pin-pad"></div>
+            <div class="pin-pad"></div><div class="pin-pad"></div><div class="pin-pad"></div>
+            <div class="pin-pad"></div><div class="pin-pad"></div><div class="pin-pad"></div>
+            <div class="pin-pad"></div><div class="pin-pad"></div>
+        </div>
+
+        <div class="display-bezel">
+            <!-- Native 320x240 screen, rendered at 2x resolution for ultra-sharp canvas -->
+            <canvas id="dashCanvas" width="640" height="480"></canvas>
+        </div>
+    </div>
+
+    <!-- Live Telemetry Controls & Simulation Panel -->
+    <div class="control-panel">
+        <div class="control-header">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Telemetry Controls
+            </h2>
+            <div class="mode-toggle">
+                <span>Simulation:</span>
+                <button id="btnAutoSim" class="toggle-btn active" onclick="toggleAutoSim()">Auto Demo Loop: ON</button>
+            </div>
+        </div>
+
+        <div class="controls-grid">
+            <!-- RPM Slider -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Engine RPM</span>
+                    <span id="lblCtrlRpm">1542 RPM</span>
+                </div>
+                <input type="range" id="sliderRpm" min="0" max="8000" step="10" value="1542" oninput="onManualInput()">
+            </div>
+
+            <!-- Speed Slider -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Vehicle Speed</span>
+                    <span id="lblCtrlSpeed">0 km/h</span>
+                </div>
+                <input type="range" id="sliderSpeed" min="0" max="220" step="1" value="0" oninput="onManualInput()">
+            </div>
+
+            <!-- Boost Slider -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Manifold Boost / Vac</span>
+                    <span id="lblCtrlBoost">-7.1 PSI</span>
+                </div>
+                <input type="range" id="sliderBoost" min="-14.7" max="25.0" step="0.1" value="-7.1" oninput="onManualInput()">
+            </div>
+
+            <!-- AFR Slider -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Air / Fuel Ratio</span>
+                    <span id="lblCtrlAfr">13.9</span>
+                </div>
+                <input type="range" id="sliderAfr" min="10.0" max="18.0" step="0.1" value="13.9" oninput="onManualInput()">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 4px;">
+            <!-- Gear Selector -->
+            <div class="control-group">
+                <div class="control-label">Gear Selection</div>
+                <div class="gear-buttons">
+                    <button class="gear-btn active" onclick="setGear('N')">N</button>
+                    <button class="gear-btn" onclick="setGear('1')">1</button>
+                    <button class="gear-btn" onclick="setGear('2')">2</button>
+                    <button class="gear-btn" onclick="setGear('3')">3</button>
+                    <button class="gear-btn" onclick="setGear('4')">4</button>
+                    <button class="gear-btn" onclick="setGear('5')">5</button>
+                    <button class="gear-btn" onclick="setGear('6')">6</button>
+                    <button class="gear-btn" onclick="setGear('R')">R</button>
+                </div>
+            </div>
+
+            <!-- Status Warnings Toggle -->
+            <div class="control-group">
+                <div class="control-label">Warning Lights Override</div>
+                <div class="warning-toggles">
+                    <button id="btnCel" class="warn-btn" onclick="toggleWarn('cel')">CEL</button>
+                    <button id="btnOil" class="warn-btn" onclick="toggleWarn('oil')">OIL</button>
+                    <button id="btnClt" class="warn-btn" onclick="toggleWarn('clt')">CLT</button>
+                    <button id="btnGas" class="warn-btn" onclick="toggleWarn('gas')">GAS</button>
+                    <button id="btnBat" class="warn-btn" onclick="toggleWarn('bat')">BAT</button>
+                    <button id="btnAfr" class="warn-btn" onclick="toggleWarn('afr')">AFR</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <button class="action-btn" onclick="resetToPhotoPreset()">Reset to Reference Photo State</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('dashCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Telemetry State
+        let state = {
+            rpm: 1542,
+            speed: 0,
+            gear: 'N',
+            boost: -7.1,
+            afr: 13.9,
+            runtimeSec: 1,
+            coolant: 44,
+            oilTemp: 31,
+            intakeTemp: 31,
+            fuelLevel: 39,
+            battery: 14.2,
+            ecuOk: true,
+            msgSec: 155,
+            autoSim: true,
+            warnings: {
+                cel: false,
+                oil: false,
+                clt: false,
+                gas: false,
+                bat: false,
+                afr: false
+            }
+        };
+
+        // Shift Light Thresholds
+        const shiftThresholds = [3200, 4000, 4700, 5300, 5700, 6000, 6300, 6600, 6900, 7200];
+        const shiftColors = [
+            '#00e676', '#00e676', '#00e676', '#00e676',
+            '#ffd600', '#ffd600', '#ffd600',
+            '#ff1744', '#ff1744', '#ff1744'
+        ];
+        const shiftDim = [
+            '#082a14', '#082a14', '#082a14', '#082a14',
+            '#322a06', '#322a06', '#322a06',
+            '#35080d', '#35080d', '#35080d'
+        ];
+
+        // Swept Tachometer Curve Math (Exact match to GaugeWidget.cpp)
+        function getRpmPoint(rpm) {
+            if (rpm <= 0) return { x: 12, y: 142 };
+            if (rpm <= 2000) {
+                const t = rpm / 2000.0;
+                const u = 1.0 - t;
+                const p0x = 12, p0y = 142;
+                const p1x = 35, p1y = 140;
+                const p2x = 65, p2y = 92;
+                const p3x = 86, p3y = 92;
+
+                const x = Math.pow(u, 3) * p0x + 3 * Math.pow(u, 2) * t * p1x + 3 * u * Math.pow(t, 2) * p2x + Math.pow(t, 3) * p3x;
+                const y = Math.pow(u, 3) * p0y + 3 * Math.pow(u, 2) * t * p1y + 3 * u * Math.pow(t, 2) * p2y + Math.pow(t, 3) * p3y;
+                return { x, y };
+            }
+            let px = 86.0 + ((rpm - 2000.0) / 1000.0) * 38.0;
+            if (px > 314.0) px = 314.0;
+            return { x: px, y: 92 };
+        }
+
+        const rpmSteps = [
+            0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000,
+            2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000
+        ];
+        const stepPoints = rpmSteps.map(r => getRpmPoint(r));
+
+        function drawCard(x, y, w, h) {
+            ctx.fillStyle = '#091e3a';
+            ctx.strokeStyle = '#16365c';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, 4);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function render() {
+            ctx.save();
+            ctx.scale(2, 2); // Native 320x240 coordinates rendered into 640x480 canvas
+
+            // 1. Electric Cobalt Racing Blue Gradient Background
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, 240);
+            bgGrad.addColorStop(0, '#0c366e');
+            bgGrad.addColorStop(1, '#071c3d');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 320, 240);
+
+            // 2. Top-Left: Gear Indicator (N)
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '900 40px Montserrat, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(state.gear, 10, 4);
+
+            // Warning indicators (2 Columns x 3 Rows)
+            ctx.font = '700 9px Montserrat, sans-serif';
+            const dimWarn = '#386e94';
+            const redWarn = '#ff2233';
+            const amberWarn = '#ffaa00';
+
+            // Col 1 (x = 52)
+            ctx.fillStyle = state.warnings.cel ? redWarn : dimWarn;
+            ctx.fillText('CEL', 52, 8);
+            ctx.fillStyle = state.warnings.clt ? redWarn : dimWarn;
+            ctx.fillText('CLT', 52, 21);
+            ctx.fillStyle = state.warnings.bat ? redWarn : dimWarn;
+            ctx.fillText('BAT', 52, 34);
+
+            // Col 2 (x = 80)
+            ctx.fillStyle = state.warnings.oil ? redWarn : dimWarn;
+            ctx.fillText('OIL', 80, 8);
+            ctx.fillStyle = state.warnings.gas ? amberWarn : dimWarn;
+            ctx.fillText('GAS', 80, 21);
+            ctx.fillStyle = state.warnings.afr ? redWarn : dimWarn;
+            ctx.fillText('AFR', 80, 34);
+
+            // 3. Shift Lights (10 LEDs at top-center)
+            const ledX = [138, 145, 152, 159, 169, 176, 183, 193, 200, 207];
+            for (let i = 0; i < 10; i++) {
+                ctx.fillStyle = (state.rpm >= shiftThresholds[i]) ? shiftColors[i] : shiftDim[i];
+                ctx.beginPath();
+                ctx.roundRect(ledX[i], 4, 5, 3, 1);
+                ctx.fill();
+            }
+
+            // 4. Top-Right: Speed & RPM Numerical Values
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 32px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.round(state.speed), 170, 8);
+
+            ctx.fillStyle = '#ffc107';
+            ctx.font = '700 10px Montserrat, sans-serif';
+            ctx.fillText('km/h', 170, 41);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 32px Montserrat, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.round(state.rpm), 304, 8);
+
+            ctx.fillStyle = '#ffc107';
+            ctx.font = '700 10px Montserrat, sans-serif';
+            ctx.fillText('RPM', 304, 41);
+
+            // 5. Swept Tachometer
+            ctx.lineWidth = 11;
+            ctx.lineCap = 'round';
+
+            // Background Track
+            for (let i = 0; i < rpmSteps.length - 1; i++) {
+                ctx.strokeStyle = (rpmSteps[i] >= 6000) ? '#5a121c' : '#13253f';
+                ctx.beginPath();
+                ctx.moveTo(stepPoints[i].x, stepPoints[i].y);
+                ctx.lineTo(stepPoints[i+1].x, stepPoints[i+1].y);
+                ctx.stroke();
+            }
+
+            // Active RPM Fill
+            if (state.rpm > 50) {
+                for (let i = 0; i < rpmSteps.length - 1; i++) {
+                    if (state.rpm <= rpmSteps[i]) break;
+
+                    const isFull = state.rpm >= rpmSteps[i+1];
+                    const endPt = isFull ? stepPoints[i+1] : getRpmPoint(state.rpm);
+
+                    ctx.strokeStyle = (rpmSteps[i] >= 6000) ? '#ff2233' : '#ffffff';
+                    ctx.beginPath();
+                    ctx.moveTo(stepPoints[i].x, stepPoints[i].y);
+                    ctx.lineTo(endPt.x, endPt.y);
+                    ctx.stroke();
+
+                    if (!isFull) break;
+                }
+            }
+
+            // Ticks at each 1000 RPM mark
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            // Tick 1
+            ctx.strokeStyle = '#6094c0';
+            ctx.beginPath();
+            ctx.moveTo(49, 122);
+            ctx.lineTo(47, 127);
+            ctx.stroke();
+
+            // Ticks 2-7
+            const ticks = [
+                { x: 86, red: false },
+                { x: 124, red: false },
+                { x: 162, red: false },
+                { x: 200, red: false },
+                { x: 238, red: true },
+                { x: 276, red: true }
+            ];
+            ticks.forEach(t => {
+                ctx.strokeStyle = t.red ? '#ff4444' : '#6094c0';
+                ctx.beginPath();
+                ctx.moveTo(t.x, 98);
+                ctx.lineTo(t.x, 103);
+                ctx.stroke();
+            });
+
+            // Numbers 1-7
+            ctx.font = '700 11px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            const markers = [
+                { x: 42, y: 130, txt: '1', red: false },
+                { x: 86, y: 106, txt: '2', red: false },
+                { x: 124, y: 106, txt: '3', red: false },
+                { x: 162, y: 106, txt: '4', red: false },
+                { x: 200, y: 106, txt: '5', red: false },
+                { x: 238, y: 106, txt: '6', red: true },
+                { x: 276, y: 106, txt: '7', red: true }
+            ];
+            markers.forEach(m => {
+                ctx.fillStyle = m.red ? '#ff4444' : '#8ab8df';
+                ctx.fillText(m.txt, m.x, m.y);
+            });
+
+            // 6. Three Middle Metric Panels (BOOST, AFR, RUNTIME)
+            // Panel 1: BOOST PSI
+            drawCard(86, 114, 72, 42);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 18px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText((state.boost > 0 ? '+' : '') + state.boost.toFixed(1), 122, 118);
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '700 9px Montserrat, sans-serif';
+            ctx.fillText('BOOST PSI', 122, 142);
+
+            // Panel 2: AFR
+            drawCard(163, 114, 72, 42);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 18px Montserrat, sans-serif';
+            ctx.fillText(state.afr.toFixed(1), 199, 118);
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '700 9px Montserrat, sans-serif';
+            ctx.fillText('AFR', 199, 142);
+
+            // Panel 3: RUN TIME
+            drawCard(240, 114, 72, 42);
+            const m = Math.floor(state.runtimeSec / 60);
+            const s = state.runtimeSec % 60;
+            const timeStr = `${m}:${s < 10 ? '0' : ''}${s}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 18px Montserrat, sans-serif';
+            ctx.fillText(timeStr, 276, 118);
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '700 9px Montserrat, sans-serif';
+            ctx.fillText('RUN TIME', 276, 142);
+
+            // 7. Six Bottom Metric Cards
+            const bottomCards = [
+                { x: 6,   val: Math.round(state.coolant),  lbl: 'COOL' },
+                { x: 58,  val: Math.round(state.oilTemp),  lbl: 'OIL T' },
+                { x: 110, val: Math.round(state.intakeTemp), lbl: 'INTAKE' },
+                { x: 162, val: Math.round(state.fuelLevel), lbl: 'FUEL %' },
+                { x: 214, val: state.battery.toFixed(1), lbl: 'BATT V', isBat: true }
+            ];
+
+            bottomCards.forEach(c => {
+                drawCard(c.x, 162, 48, 48);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = c.isBat ? '800 16px Montserrat, sans-serif' : '800 18px Montserrat, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(c.val, c.x + 24, 168);
+
+                ctx.fillStyle = '#00e5ff';
+                ctx.font = '700 9px Montserrat, sans-serif';
+                ctx.fillText(c.lbl, c.x + 24, 194);
+            });
+
+            // Card 6: ECU Status
+            drawCard(266, 162, 48, 48);
+            ctx.fillStyle = state.ecuOk ? '#00e676' : '#ff2233';
+            ctx.beginPath();
+            ctx.roundRect(271, 167, 38, 18, 3);
+            ctx.fill();
+
+            ctx.fillStyle = state.ecuOk ? '#001a08' : '#ffffff';
+            ctx.font = '900 12px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(state.ecuOk ? 'OK' : 'ERR', 290, 171);
+
+            ctx.fillStyle = '#00e5ff';
+            ctx.font = '700 9px Montserrat, sans-serif';
+            ctx.fillText('ECU', 290, 194);
+
+            // 8. Bottom Electric Royal Blue Footer Bar
+            ctx.fillStyle = '#0055d4';
+            ctx.fillRect(0, 216, 320, 24);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '700 11px Montserrat, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`LIVE - ${Math.round(state.msgSec)} MSG/S`, 8, 222);
+
+            ctx.fillStyle = '#80deea';
+            ctx.textAlign = 'right';
+            ctx.fillText('KM/H - °C', 312, 222);
+
+            ctx.restore();
+        }
+
+        // Auto Simulation Engine (Replicates main.cpp FreeRTOS State Machine)
+        let simState = 0;
+        let simTimer = 0;
+        let lastTimestamp = performance.now();
+
+        function simLoop(now) {
+            const dt = (now - lastTimestamp) / 1000.0;
+            lastTimestamp = now;
+
+            if (state.autoSim) {
+                simTimer += dt;
+                state.runtimeSec = Math.floor(simTimer);
+
+                switch (simState) {
+                    case 0: // Idle in Neutral (like reference photo)
+                        state.gear = 'N';
+                        state.speed = 0;
+                        state.rpm = 1542 + 15 * Math.sin(now * 0.005);
+                        state.boost = -7.1 + 0.1 * Math.sin(now * 0.003);
+                        state.afr = 13.9 + 0.05 * Math.sin(now * 0.008);
+                        if (simTimer > 4.0) {
+                            simState = 1;
+                            simTimer = 0;
+                        }
+                        break;
+                    case 1: // 1st Gear Pull
+                        state.gear = '1';
+                        state.rpm += 1350 * dt;
+                        state.speed += 14 * dt;
+                        state.boost = -1.0 + (state.rpm / 5800) * 12.5;
+                        state.afr = 12.3;
+                        if (state.rpm >= 5700 || simTimer > 3.2) {
+                            simState = 2;
+                            simTimer = 0;
+                            state.rpm = 3200;
+                        }
+                        break;
+                    case 2: // 2nd Gear Pull
+                        state.gear = '2';
+                        state.rpm += 1100 * dt;
+                        state.speed += 15 * dt;
+                        state.boost = 11.5 + 3.0 * Math.sin(simTimer * 3.0);
+                        state.afr = 12.0;
+                        if (state.rpm >= 6200 || simTimer > 3.0) {
+                            simState = 3;
+                            simTimer = 0;
+                            state.rpm = 3700;
+                        }
+                        break;
+                    case 3: // 3rd Gear Pull to High Speed
+                        state.gear = '3';
+                        state.rpm += 800 * dt;
+                        state.speed += 18 * dt;
+                        state.boost = 14.2;
+                        state.afr = 11.8;
+                        if (state.speed >= 125 || simTimer > 3.5) {
+                            simState = 4;
+                            simTimer = 0;
+                        }
+                        break;
+                    case 4: // Highway Cruise
+                        state.gear = '4';
+                        state.speed = 125 + 2 * Math.sin(now * 0.002);
+                        state.rpm = 3500 + 40 * Math.sin(now * 0.003);
+                        state.boost = -1.5;
+                        state.afr = 14.7;
+                        if (simTimer > 5.0) {
+                            simState = 5;
+                            simTimer = 0;
+                        }
+                        break;
+                    case 5: // Deceleration & Downshift
+                        state.speed -= 28 * dt;
+                        if (state.speed < 0) state.speed = 0;
+                        if (state.speed > 80) { state.gear = '3'; state.rpm = 3300; }
+                        else if (state.speed > 40) { state.gear = '2'; state.rpm = 2700; }
+                        else if (state.speed > 10) { state.gear = '1'; state.rpm = 1800; }
+                        else { state.gear = 'N'; state.rpm = 1542; }
+                        state.boost = -11.5;
+                        state.afr = 17.5;
+                        if (state.speed === 0 && simTimer > 4.0) {
+                            simState = 0;
+                            simTimer = 0;
+                        }
+                        break;
+                }
+
+                // Update UI slider values
+                document.getElementById('sliderRpm').value = state.rpm;
+                document.getElementById('lblCtrlRpm').innerText = `${Math.round(state.rpm)} RPM`;
+                document.getElementById('sliderSpeed').value = state.speed;
+                document.getElementById('lblCtrlSpeed').innerText = `${Math.round(state.speed)} km/h`;
+                document.getElementById('sliderBoost').value = state.boost;
+                document.getElementById('lblCtrlBoost').innerText = `${(state.boost > 0 ? '+' : '')}${state.boost.toFixed(1)} PSI`;
+                document.getElementById('sliderAfr').value = state.afr;
+                document.getElementById('lblCtrlAfr').innerText = state.afr.toFixed(1);
+
+                // Update gear buttons active state
+                document.querySelectorAll('.gear-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.innerText === state.gear);
+                });
+            }
+
+            render();
+            requestAnimationFrame(simLoop);
+        }
+
+        function toggleAutoSim() {
+            state.autoSim = !state.autoSim;
+            const btn = document.getElementById('btnAutoSim');
+            btn.classList.toggle('active', state.autoSim);
+            btn.innerText = state.autoSim ? 'Auto Demo Loop: ON' : 'Manual Control: ON';
+        }
+
+        function onManualInput() {
+            if (state.autoSim) {
+                toggleAutoSim();
+            }
+            state.rpm = parseFloat(document.getElementById('sliderRpm').value);
+            document.getElementById('lblCtrlRpm').innerText = `${Math.round(state.rpm)} RPM`;
+
+            state.speed = parseFloat(document.getElementById('sliderSpeed').value);
+            document.getElementById('lblCtrlSpeed').innerText = `${Math.round(state.speed)} km/h`;
+
+            state.boost = parseFloat(document.getElementById('sliderBoost').value);
+            document.getElementById('lblCtrlBoost').innerText = `${(state.boost > 0 ? '+' : '')}${state.boost.toFixed(1)} PSI`;
+
+            state.afr = parseFloat(document.getElementById('sliderAfr').value);
+            document.getElementById('lblCtrlAfr').innerText = state.afr.toFixed(1);
+        }
+
+        function setGear(g) {
+            state.gear = g;
+            document.querySelectorAll('.gear-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText === g);
+            });
+        }
+
+        function toggleWarn(w) {
+            state.warnings[w] = !state.warnings[w];
+            const btn = document.getElementById(`btn${w.charAt(0).toUpperCase() + w.slice(1)}`);
+            btn.classList.toggle('active', state.warnings[w]);
+        }
+
+        function resetToPhotoPreset() {
+            state.rpm = 1542;
+            state.speed = 0;
+            state.gear = 'N';
+            state.boost = -7.1;
+            state.afr = 13.9;
+            state.runtimeSec = 1;
+            state.coolant = 44;
+            state.oilTemp = 31;
+            state.intakeTemp = 31;
+            state.fuelLevel = 39;
+            state.battery = 14.2;
+            state.ecuOk = true;
+            state.msgSec = 155;
+            state.warnings = { cel: false, oil: false, clt: false, gas: false, bat: false, afr: false };
+
+            document.querySelectorAll('.warn-btn').forEach(b => b.classList.remove('active'));
+            simState = 0;
+            simTimer = 0;
+            if (!state.autoSim) toggleAutoSim();
+        }
+
+        // Start render loop
+        requestAnimationFrame(simLoop);
+    </script>
+</body>
+</html>
